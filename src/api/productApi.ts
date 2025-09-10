@@ -38,7 +38,7 @@ export const createProduct = async (productData: CreateProductRequest): Promise<
 };
 
 // Update product with picture
-export const updateProductWithPicture = async (productData: UpdateProductRequest): Promise<Product> => {
+export const updateProductWithPicture = async (productData: UpdateProductRequest) => {
   const formData = new FormData();
   formData.append('id', productData.id);
   
@@ -58,8 +58,8 @@ export const updateProductWithPicture = async (productData: UpdateProductRequest
     },
   });
   
-  if (!data.data) throw new Error('Failed to update product');
-  return data.data;
+  if (!data) throw new Error('Failed to update product');
+  return data;
 };
 
 // Update product without picture
