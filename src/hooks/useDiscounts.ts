@@ -1,19 +1,41 @@
 // hooks/useDiscounts.ts
 import { useState, useEffect, useCallback } from 'react';
-import { CartDiscountService, type CartItemLite, type DiscountCalculation, type DiscountRule } from '../services/cartDiscount.service';
+import { getDiscountSuggestions, getApplicableRules, calculateCartDiscounts } from '../api/discountRuleApi';
+import type { CartItem } from '../types/cart';
+
+export type DiscountSuggestion = {
+  type: string;
+  message: string;
+  requiredQuantity?: number;
+  currentQuantity: number;
+  discountAmount?: number;
+  ruleId: string;
+};
+
+export type DiscountCalculation = {
+  originalTotal: number;
+  totalDiscount: number;
+  finalTotal: number;
+  appliedDiscounts: Array<{
+    ruleId: string;
+    type: string;
+    description: string;
+    discountAmount: number;
+  }>;
+};
 
 export type UseDiscountsState = {
   discounts: DiscountCalculation;
   loading: boolean;
   error: string | null;
-  availableDiscounts: DiscountRule[];
+  availableDiscounts: any[];
   calculateDiscounts: () => Promise<void>;
   checkAvailableDiscounts: () => Promise<void>;
-  checkItemDiscounts: (productId?: string, categoryId?: string, quantity?: number) => Promise<(DiscountRule & { message: string })[]>;
-  formatDiscountMessage: (rule: DiscountRule, context?: { quantity?: number; cartTotal?: number }) => string;
+  checkItemDiscounts: (productId?: string, categoryId?: string, quantity?: number) => Promise<DiscountSuggestion[]>;
+  formatDiscountMessage: (rule: any, context?: { quantity?: number; cartTotal?: number }) => string;
 }
 
-export const useDiscounts = (cartItems: CartItemLite[] = []): UseDiscountsState => {
+export const useDiscounts = (cartItems: CartItem[] = []): UseDiscountsState => {
   const [discounts, setDiscounts] = useState<DiscountCalculation>({
     originalTotal: 0,
     totalDiscount: 0,
@@ -22,9 +44,7 @@ export const useDiscounts = (cartItems: CartItemLite[] = []): UseDiscountsState 
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [availableDiscounts, setAvailableDiscounts] = useState<DiscountRule[]>([]);
-
-  const discountService = new CartDiscountService();
+  const [availableDiscounts, setAvailableDiscounts] = useState<any[]>([]);
 
   const calculateDiscounts = useCallback(async () => {
     if (!cartItems || cartItems.length === 0) {
@@ -44,13 +64,22 @@ export const useDiscounts = (cartItems: CartItemLite[] = []): UseDiscountsState 
     setError(null);
 
     try {
-      const result = await discountService.calculateDiscounts(cartItems);
-      setDiscounts(result);
+      const result = await calculateCartDiscounts(cartItems, "507f1f77bcf86cd799439011");
+      setDiscounts({
+        originalTotal: result.originalTotal || 0,
+        totalDiscount: result.totalDiscount || 0,
+        finalTotal: result.finalTotal || 0,
+        appliedDiscounts: result.appliedDiscounts || []
+      });
     } catch (err: any) {
       console.error('Error calculating discounts:', err);
       setError(err?.message || 'Failed to calculate discounts');
-      const result = discountService.getFallbackCalculation(cartItems);
-      setDiscounts(result);
+      setDiscounts({
+        originalTotal: cartItems.reduce((sum, item) => sum + (item.unitPrice * item.qty), 0),
+        totalDiscount: 0,
+        finalTotal: cartItems.reduce((sum, item) => sum + (item.unitPrice * item.qty), 0),
+        appliedDiscounts: []
+      });
     } finally {
       setLoading(false);
     }
@@ -63,8 +92,8 @@ export const useDiscounts = (cartItems: CartItemLite[] = []): UseDiscountsState 
     }
 
     try {
-      const cartTotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-      const rules = await discountService.getApplicableRules(cartItems, cartTotal);
+      const cartTotal = cartItems.reduce((sum, item) => sum + (item.unitPrice * item.qty), 0);
+      const rules = await getApplicableRules(cartItems, cartTotal);
       setAvailableDiscounts(prevRules => {
         // Only update if rules have actually changed
         const rulesChanged = JSON.stringify(prevRules) !== JSON.stringify(rules);
@@ -76,12 +105,17 @@ export const useDiscounts = (cartItems: CartItemLite[] = []): UseDiscountsState 
     }
   }, [cartItems]);
 
-  const checkItemDiscounts = useCallback(async (productId?: string, categoryId?: string, quantity: number = 1) => {
+  const checkItemDiscounts = useCallback(async (productId?: string, categoryId?: string, quantity: number = 1): Promise<DiscountSuggestion[]> => {
     try {
-      const rules = await discountService.checkDiscountAvailability(productId, categoryId, quantity);
-      return rules.map(rule => ({
-        ...rule,
-        message: discountService.formatDiscountMessage(rule, { quantity })
+      if (!productId) return [];
+      const suggestions = await getDiscountSuggestions(productId, categoryId, quantity);
+      return suggestions.map(suggestion => ({
+        type: suggestion.type || 'discount',
+        message: suggestion.message || 'Special discount available!',
+        requiredQuantity: suggestion.requiredQuantity,
+        currentQuantity: quantity,
+        discountAmount: suggestion.discountAmount,
+        ruleId: suggestion.ruleId || suggestion._id || ''
       }));
     } catch (err) {
       console.error('Error checking item discounts:', err);
@@ -99,6 +133,27 @@ export const useDiscounts = (cartItems: CartItemLite[] = []): UseDiscountsState 
     return () => clearTimeout(timer);
   }, [JSON.stringify(cartItems)]); // Stringify to prevent reference changes
 
+  const formatDiscountMessage = (rule: any, context?: { quantity?: number; cartTotal?: number }) => {
+    if (!rule) return 'Discount available';
+    
+    const { type, discountPercentage, discountAmount, minQuantity, minAmount } = rule;
+    const quantity = context?.quantity || 1;
+    const cartTotal = context?.cartTotal || 0;
+    
+    switch (type) {
+      case 'BOGO':
+        return `Buy ${minQuantity || 2} Get 1 Free! Add ${(minQuantity || 2) - quantity} more to unlock this offer.`;
+      case 'PERCENTAGE':
+        return `Get ${discountPercentage}% off! ${minAmount ? `Spend ₹${minAmount} more to qualify.` : ''}`;
+      case 'FIXED_AMOUNT':
+        return `Get ₹${discountAmount} off! ${minAmount ? `Spend ₹${minAmount} more to qualify.` : ''}`;
+      case 'CATEGORY_DISCOUNT':
+        return `Special category discount available! ${minAmount ? `Spend ₹${minAmount} more to qualify.` : ''}`;
+      default:
+        return 'Special discount available!';
+    }
+  };
+
   return {
     discounts,
     loading,
@@ -107,6 +162,6 @@ export const useDiscounts = (cartItems: CartItemLite[] = []): UseDiscountsState 
     calculateDiscounts,
     checkAvailableDiscounts,
     checkItemDiscounts,
-    formatDiscountMessage: discountService.formatDiscountMessage.bind(discountService)
+    formatDiscountMessage
   };
 };

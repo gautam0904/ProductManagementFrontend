@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
   Box, 
@@ -27,83 +27,22 @@ import {
   ArrowBack as BackIcon
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
-
-interface Product {
-  _id: string;
-  name: string;
-  price: number;
-  image?: string;
-  category?: string;
-}
-
-interface CartItem {
-  product: string | Product;
-  qty: number;
-  unitPrice: number;
-  discount: number;
-  finalPrice: number;
-  breakdown: string[];
-  paidQty: number;
-  name?: string;
-  image?: string;
-}
-
-interface CartData {
-  items: CartItem[];
-  totals: {
-    subtotal: number;
-    discount: number;
-    payable: number;
-  };
-  discountApplied: boolean;
-}
+import { useCart } from '../contexts/CartContext';
+import type { CartItem } from '../types/cart';
 
 const CartPage = () => {
-  const [cart, setCart] = useState<CartData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { cart, loading, updateCartItem, removeCartItem, clearCart } = useCart();
   const [updating, setUpdating] = useState<Record<string, boolean>>({});
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const navigate = useNavigate();
 
-  const fetchCart = useCallback(async () => {
-    try {
-      const response = await fetch('http://localhost:4000/api/v1/cart/test-user-123');
-      const result = await response.json();
-      
-      if (result.data) {
-        setCart(result.data);
-      } else {
-        throw new Error('No cart data received');
-      }
-    } catch (error) {
-      console.error('Failed to load cart:', error);
-      toast.error('Failed to load cart');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchCart();
-  }, [fetchCart]);
-
-  const updateCartItem = async (productId: string, quantity: number) => {
+  const handleUpdateCartItem = async (productId: string, quantity: number) => {
     if (!cart) return;
     
     try {
       setUpdating(prev => ({ ...prev, [productId]: true }));
       
-      const response = await fetch(`http://localhost:4000/api/v1/cart/test-user-123/items/${productId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ quantity })
-      });
-      
-      if (!response.ok) throw new Error('Failed to update cart');
-      
-      await fetchCart();
+      await updateCartItem(productId, quantity);
       toast.success('Cart updated');
     } catch (error) {
       console.error('Error updating cart:', error);
@@ -113,19 +52,13 @@ const CartPage = () => {
     }
   };
 
-  const removeFromCart = async (productId: string) => {
+  const handleRemoveFromCart = async (productId: string) => {
     if (!cart) return;
     
     try {
       setUpdating(prev => ({ ...prev, [productId]: true }));
       
-      const response = await fetch(`http://localhost:4000/api/v1/cart/test-user-123/items/${productId}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) throw new Error('Failed to remove item');
-      
-      await fetchCart();
+      await removeCartItem(productId);
       toast.success('Item removed from cart');
     } catch (error) {
       console.error('Error removing item:', error);
@@ -135,32 +68,22 @@ const CartPage = () => {
     }
   };
 
-  const clearCart = async () => {
+  const handleClearCart = async () => {
     if (!cart) return;
     
     try {
-      setLoading(true);
-      
-      const response = await fetch(`http://localhost:4000/api/v1/cart/test-user-123/clear`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) throw new Error('Failed to clear cart');
-      
-      setCart(null);
+      await clearCart();
       setClearDialogOpen(false);
       toast.success('Cart cleared');
     } catch (error) {
       console.error('Error clearing cart:', error);
       toast.error('Failed to clear cart');
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleQuantityChange = (item: CartItem, newQty: number) => {
     if (newQty < 1) return;
-    updateCartItem(item.product as string, newQty);
+    handleUpdateCartItem(item.product, newQty);
   };
 
   if (loading) {
@@ -218,7 +141,7 @@ const CartPage = () => {
         <DialogActions>
           <Button onClick={() => setClearDialogOpen(false)}>Cancel</Button>
           <Button 
-            onClick={clearCart} 
+            onClick={handleClearCart} 
             color="error"
             variant="contained"
             disabled={loading}
@@ -285,8 +208,8 @@ const CartPage = () => {
                           </Typography>
                         </Box>
                         <IconButton 
-                          onClick={() => removeFromCart(item.product as string)}
-                          disabled={updating[item.product as string]}
+                          onClick={() => handleRemoveFromCart(item.product)}
+                          disabled={updating[item.product]}
                           color="error"
                           size="small"
                         >
@@ -298,7 +221,7 @@ const CartPage = () => {
                         <IconButton 
                           size="small" 
                           onClick={() => handleQuantityChange(item, item.qty - 1)}
-                          disabled={item.qty <= 1 || updating[item.product as string]}
+                          disabled={item.qty <= 1 || updating[item.product]}
                         >
                           <RemoveIcon fontSize="small" />
                         </IconButton>
@@ -310,24 +233,26 @@ const CartPage = () => {
                           inputProps={{ min: 1, style: { textAlign: 'center' } }}
                           size="small"
                           sx={{ width: 60 }}
-                          disabled={updating[item.product as string]}
+                          disabled={updating[item.product]}
                         />
                         
                         <IconButton 
                           size="small" 
                           onClick={() => handleQuantityChange(item, item.qty + 1)}
-                          disabled={updating[item.product as string]}
+                          disabled={updating[item.product]}
                         >
                           <AddIcon fontSize="small" />
                         </IconButton>
                       </Box>
                       
                       {item.discount > 0 && (
-                        <Box mb={2}>
-                          <Typography variant="body2" color="success.main" fontWeight={600}>
-                            Discount Applied: ₹{item.discount}
-                          </Typography>
-                          {item.breakdown.map((breakdown, idx) => (
+                        <Box mb={2} p={2} bgcolor="success.light" borderRadius={1}>
+                          <Box display="flex" alignItems="center" gap={1} mb={1}>
+                            <Typography variant="body2" color="success.main" fontWeight={600}>
+                              🎉 Discount Applied: ₹{item.discount}
+                            </Typography>
+                          </Box>
+                          {item.breakdown?.map((breakdown, idx) => (
                             <Chip 
                               key={idx}
                               label={breakdown} 

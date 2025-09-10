@@ -33,10 +33,12 @@ import {
   Close as CloseIcon,
   LocalOffer as OfferIcon
 } from '@mui/icons-material';
+import { useCart } from '../../contexts/CartContext';
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const { cart, loading: cartLoading } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -68,6 +70,7 @@ const Navbar = () => {
   const navigationItems = [
     { name: 'Home', path: '/', icon: <HomeIcon /> },
     { name: 'Products', path: '/products', icon: <StoreIcon /> },
+    { name: 'Cart', path: '/cart', icon: <ShoppingCartIcon /> },
     { name: 'Manage Products', path: '/manage-products', icon: <ManageIcon /> },
     { name: 'Manage Categories', path: '/manage-categories', icon: <CategoryIcon /> },
     { name: 'Manage Discount Rules', path: '/manage-discount-rules', icon: <OfferIcon /> },
@@ -208,7 +211,10 @@ const Navbar = () => {
                 },
               }}
             >
-              <Badge badgeContent={0} color="primary">
+              <Badge 
+                badgeContent={cartLoading ? '...' : (cart?.items?.reduce((sum, item) => sum + item.qty, 0) || 0)} 
+                color="primary"
+              >
                 <ShoppingCartIcon />
               </Badge>
             </IconButton>

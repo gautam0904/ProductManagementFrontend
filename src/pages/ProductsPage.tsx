@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { listProducts, normalizeProduct } from "../api/productApi";
-import { addToCart } from "../api/cartApi";
+import { useCart } from "../contexts/CartContext";
 import { useDiscounts } from "../hooks/useDiscounts";
 import type { Product } from "../types/products";
 import { Link } from 'react-router-dom';
@@ -13,15 +13,11 @@ import {
   CardMedia, 
   CircularProgress, 
   Container, 
-  Typography,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Chip
+  Typography
 } from '@mui/material';
-import { ShoppingCart as CartIcon, LocalOffer as OfferIcon } from '@mui/icons-material';
+import { ShoppingCart as CartIcon } from '@mui/icons-material';
 import toast from 'react-hot-toast';
+import DiscountSuggestionDialog from '../components/DiscountSuggestionDialog';
 
 const ProductsPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -37,7 +33,8 @@ const ProductsPage = () => {
     suggestions: []
   });
 
-  // Use discounts hook for suggestion functionality
+  // Use cart context and discounts hook
+  const { addToCart } = useCart();
   const { checkItemDiscounts } = useDiscounts();
 
   useEffect(() => {
@@ -66,11 +63,7 @@ const ProductsPage = () => {
       setAddingToCart(String(productId));
       
       // Add to cart
-      await addToCart({
-        productId: String(productId),
-        quantity: 1,
-        userId: 'user-123' // You can implement proper user management later
-      });
+      await addToCart(String(productId), 1);
 
       // Check for discount suggestions
       const suggestions = await checkItemDiscounts(
@@ -114,11 +107,7 @@ const ProductsPage = () => {
         }
         
         // Add more quantity to trigger the discount
-        await addToCart({
-          productId: String(productId),
-          quantity: 1, // Add one more
-          userId: 'user-123'
-        });
+        await addToCart(String(productId), 1);
         toast.success('Additional item added! Discount applied!');
       } catch (error) {
         console.error('Failed to add additional item:', error);
@@ -195,61 +184,16 @@ const ProductsPage = () => {
       </Box>
 
       {/* Suggestion Dialog */}
-      <Dialog 
-        open={suggestionDialog.open} 
+      <DiscountSuggestionDialog
+        open={suggestionDialog.open}
         onClose={handleCloseSuggestionDialog}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <OfferIcon color="primary" />
-          Special Offer Available!
-        </DialogTitle>
-        <DialogContent>
-          {suggestionDialog.product && (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                {suggestionDialog.product.name}
-              </Typography>
-              <Typography variant="body1" paragraph>
-                Great news! You can get additional discounts on this product.
-              </Typography>
-              
-              {suggestionDialog.suggestions.map((suggestion, index) => (
-                <Box key={index} sx={{ mb: 2, p: 2, bgcolor: 'primary.light', borderRadius: 1 }}>
-                  <Box display="flex" alignItems="center" gap={1} mb={1}>
-                    <Chip 
-                      label={suggestion.type?.replace(/_/g, ' ') || 'Special Offer'} 
-                      color="primary" 
-                      size="small" 
-                    />
-                  </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    {suggestion.message}
-                  </Typography>
-                </Box>
-              ))}
-              
-              <Typography variant="body2" color="text.secondary">
-                Would you like to add more items to unlock this discount?
-              </Typography>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseSuggestionDialog}>
-            Maybe Later
-          </Button>
-          <Button 
-            onClick={handleAcceptSuggestion} 
-            variant="contained"
-            startIcon={<CartIcon />}
-          >
-            Add More & Save!
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onAccept={handleAcceptSuggestion}
+        productName={suggestionDialog.product?.name || ''}
+        suggestions={suggestionDialog.suggestions}
+        loading={addingToCart === (suggestionDialog.product?._id || suggestionDialog.product?.id)}
+      />
     </Container>
   );
 };
 export default ProductsPage;
+

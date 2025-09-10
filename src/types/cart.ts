@@ -1,27 +1,38 @@
-import type { Product, OfferType } from "./products";
-
-export type AppliedOffer = {
-  type: OfferType;
-  label: string;       // e.g., "BOGO: 1 free"
-  discount: number;    // in product currency
-};
-
 export interface CartItem {
-  product: Product;
-  quantity: number;
-  lineTotal: number;        // after discounts for this item
-  appliedOffers?: AppliedOffer[];
+  product: string; // ObjectId as string
+  name: string;
+  qty: number;
+  unitPrice: number;
+  discount: number;
+  finalPrice: number;
+  paidQty: number;
+  breakdown?: string[];
+  stock?: number;
+  image?: string;
+}
+
+export interface CartTotals {
+  subtotal: number;
+  discount: number;
+  payable: number;
+  savings?: number;
 }
 
 export interface Cart {
   items: CartItem[];
-  subtotal: number;    // sum of qty * unit price (pre-discount)
-  discounts: number;   // total discount
-  total: number;       // subtotal - discounts
-  currency: string;    // e.g., "₹" or "$"
+  totals: CartTotals;
+  discountApplied: boolean;
+  cartId?: string;
+  updatedAt?: Date;
 }
 
 export interface AddToCartRequest {
+  productId: string;
+  quantity: number;
+  userId?: string;
+}
+
+export interface UpdateCartItemRequest {
   productId: string;
   quantity: number;
   userId?: string;
@@ -31,4 +42,26 @@ export interface CartResponse {
   success: boolean;
   message: string;
   data?: Cart;
+}
+
+// Legacy types for backward compatibility
+export type AppliedOffer = {
+  type: string;
+  label: string;
+  discount: number;
+};
+
+export interface LegacyCartItem {
+  product: any;
+  quantity: number;
+  lineTotal: number;
+  appliedOffers?: AppliedOffer[];
+}
+
+export interface LegacyCart {
+  items: LegacyCartItem[];
+  subtotal: number;
+  discounts: number;
+  total: number;
+  currency: string;
 }

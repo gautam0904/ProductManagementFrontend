@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getProductById, normalizeProduct } from "../api/productApi";
-import { addToCart } from "../api/cartApi";
+import { useCart } from "../contexts/CartContext";
 import { useDiscounts } from "../hooks/useDiscounts";
 import type { Product } from "../types/products";
 import { 
@@ -11,16 +11,11 @@ import {
   CardMedia, 
   CircularProgress, 
   Container, 
-  Grid, 
-  Typography,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Chip
+  Typography
 } from '@mui/material';
-import { ShoppingCart as CartIcon, LocalOffer as OfferIcon } from '@mui/icons-material';
+import { ShoppingCart as CartIcon } from '@mui/icons-material';
 import toast from 'react-hot-toast';
+import DiscountSuggestionDialog from '../components/DiscountSuggestionDialog';
 
 const ProductDetailPage = () => {
   const { id } = useParams();
@@ -37,7 +32,8 @@ const ProductDetailPage = () => {
     suggestions: []
   });
 
-  // Use discounts hook for suggestion functionality
+  // Use cart context and discounts hook
+  const { addToCart } = useCart();
   const { checkItemDiscounts } = useDiscounts();
 
   useEffect(() => {
@@ -69,11 +65,7 @@ const ProductDetailPage = () => {
       }
       
       // Add to cart
-      await addToCart({
-        productId: String(productId),
-        quantity: 1,
-        userId: 'user-123' // You can implement proper user management later
-      });
+      await addToCart(String(productId), 1);
 
       // Check for discount suggestions
       const suggestions = await checkItemDiscounts(
@@ -117,11 +109,7 @@ const ProductDetailPage = () => {
         }
         
         // Add more quantity to trigger the discount
-        await addToCart({
-          productId: String(productId),
-          quantity: 1, // Add one more
-          userId: 'user-123'
-        });
+        await addToCart(String(productId), 1);
         toast.success('Additional item added! Discount applied!');
       } catch (error) {
         console.error('Failed to add additional item:', error);
@@ -145,8 +133,8 @@ const ProductDetailPage = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Grid container spacing={4}>
-        <Grid item xs={12} md={6}>
+      <Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '1fr 1fr' }} gap={4}>
+        <Box>
           <Card>
             <CardMedia
               component="img"
@@ -156,8 +144,8 @@ const ProductDetailPage = () => {
               sx={{ objectFit: 'contain', p: 2 }}
             />
           </Card>
-        </Grid>
-        <Grid item xs={12} md={6}>
+        </Box>
+        <Box>
           <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Typography variant="h4" component="h1" gutterBottom fontWeight={700}>
               {product.name}
@@ -186,65 +174,20 @@ const ProductDetailPage = () => {
           {addingToCart ? 'Adding to Cart...' : 'Add to Cart'}
         </Button>
           </Box>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
 
       {/* Suggestion Dialog */}
-      <Dialog 
-        open={suggestionDialog.open} 
+      <DiscountSuggestionDialog
+        open={suggestionDialog.open}
         onClose={handleCloseSuggestionDialog}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <OfferIcon color="primary" />
-          Special Offer Available!
-        </DialogTitle>
-        <DialogContent>
-          {suggestionDialog.product && (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                {suggestionDialog.product.name}
-              </Typography>
-              <Typography variant="body1" paragraph>
-                Great news! You can get additional discounts on this product.
-              </Typography>
-              
-              {suggestionDialog.suggestions.map((suggestion, index) => (
-                <Box key={index} sx={{ mb: 2, p: 2, bgcolor: 'primary.light', borderRadius: 1 }}>
-                  <Box display="flex" alignItems="center" gap={1} mb={1}>
-                    <Chip 
-                      label={suggestion.type?.replace(/_/g, ' ') || 'Special Offer'} 
-                      color="primary" 
-                      size="small" 
-                    />
-                  </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    {suggestion.message}
-                  </Typography>
-                </Box>
-              ))}
-              
-              <Typography variant="body2" color="text.secondary">
-                Would you like to add more items to unlock this discount?
-              </Typography>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseSuggestionDialog}>
-            Maybe Later
-          </Button>
-          <Button 
-            onClick={handleAcceptSuggestion} 
-            variant="contained"
-            startIcon={<CartIcon />}
-          >
-            Add More & Save!
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onAccept={handleAcceptSuggestion}
+        productName={suggestionDialog.product?.name || ''}
+        suggestions={suggestionDialog.suggestions}
+        loading={addingToCart}
+      />
     </Container>
   );
 };
 export default ProductDetailPage;
+
