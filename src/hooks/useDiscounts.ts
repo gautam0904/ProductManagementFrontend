@@ -37,6 +37,9 @@ export const useDiscounts = (cartItems: CartItemLite[] = []): UseDiscountsState 
       return;
     }
 
+    // Skip if already loading to prevent multiple simultaneous calculations
+    if (loading) return;
+
     setLoading(true);
     setError(null);
 
@@ -44,13 +47,14 @@ export const useDiscounts = (cartItems: CartItemLite[] = []): UseDiscountsState 
       const result = await discountService.calculateDiscounts(cartItems);
       setDiscounts(result);
     } catch (err: any) {
+      console.error('Error calculating discounts:', err);
       setError(err?.message || 'Failed to calculate discounts');
       const result = discountService.getFallbackCalculation(cartItems);
       setDiscounts(result);
     } finally {
       setLoading(false);
     }
-  }, [cartItems]);
+  }, [cartItems, loading]);
 
   const checkAvailableDiscounts = useCallback(async () => {
     if (!cartItems || cartItems.length === 0) {
@@ -61,7 +65,11 @@ export const useDiscounts = (cartItems: CartItemLite[] = []): UseDiscountsState 
     try {
       const cartTotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
       const rules = await discountService.getApplicableRules(cartItems, cartTotal);
-      setAvailableDiscounts(rules);
+      setAvailableDiscounts(prevRules => {
+        // Only update if rules have actually changed
+        const rulesChanged = JSON.stringify(prevRules) !== JSON.stringify(rules);
+        return rulesChanged ? rules : prevRules;
+      });
     } catch (err) {
       console.error('Error checking available discounts:', err);
       setAvailableDiscounts([]);
@@ -81,10 +89,15 @@ export const useDiscounts = (cartItems: CartItemLite[] = []): UseDiscountsState 
     }
   }, []);
 
+  // Only run calculations when cartItems change
   useEffect(() => {
-    calculateDiscounts();
-    checkAvailableDiscounts();
-  }, [calculateDiscounts, checkAvailableDiscounts]);
+    const timer = setTimeout(() => {
+      calculateDiscounts();
+      checkAvailableDiscounts();
+    }, 100); // Small debounce to prevent rapid recalculations
+    
+    return () => clearTimeout(timer);
+  }, [JSON.stringify(cartItems)]); // Stringify to prevent reference changes
 
   return {
     discounts,

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -38,8 +38,14 @@ const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  // Close mobile drawer when route changes
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -50,6 +56,12 @@ const Navbar = () => {
   };
 
   const handleProfileMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    setMobileOpen(false);
     setAnchorEl(null);
   };
 
@@ -76,9 +88,7 @@ const Navbar = () => {
         {navigationItems.map((item) => (
           <ListItem key={item.name} disablePadding>
             <ListItemButton
-              component={Link}
-              to={item.path}
-              onClick={handleDrawerToggle}
+              onClick={() => handleNavigation(item.path)}
               selected={location.pathname === item.path || 
                 (item.path !== '/' && location.pathname.startsWith(item.path))}
               sx={{
@@ -145,8 +155,7 @@ const Navbar = () => {
               {navigationItems.map((item) => (
                 <Button
                   key={item.name}
-                  component={Link}
-                  to={item.path}
+                  onClick={() => handleNavigation(item.path)}
                   startIcon={item.icon}
                   sx={{
                     color: location.pathname === item.path || 
@@ -188,8 +197,7 @@ const Navbar = () => {
 
             {/* Cart with Badge */}
             <IconButton
-              component={Link}
-              to="/cart"
+              onClick={() => handleNavigation('/cart')}
               size="large"
               color="inherit"
               sx={{ 
@@ -258,20 +266,20 @@ const Navbar = () => {
           horizontal: 'right',
         }}
       >
-        <MenuItem onClick={handleProfileMenuClose}>
+        <MenuItem onClick={() => handleNavigation('/profile')}>
           <ListItemIcon>
             <PersonIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>Profile</ListItemText>
         </MenuItem>
-        <MenuItem onClick={handleProfileMenuClose}>
+        <MenuItem onClick={() => handleNavigation('/orders')}>
           <ListItemIcon>
             <ShoppingCartIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>Orders</ListItemText>
         </MenuItem>
         <Divider />
-        <MenuItem onClick={handleProfileMenuClose}>
+        <MenuItem onClick={() => handleNavigation('/logout')}>
           <ListItemText>Logout</ListItemText>
         </MenuItem>
       </Menu>
