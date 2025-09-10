@@ -30,7 +30,8 @@ import {
   Category as CategoryIcon,
   Person as PersonIcon,
   Search as SearchIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  LocalOffer as OfferIcon
 } from '@mui/icons-material';
 
 const Navbar = () => {
@@ -57,6 +58,7 @@ const Navbar = () => {
     { name: 'Products', path: '/products', icon: <StoreIcon /> },
     { name: 'Manage Products', path: '/manage-products', icon: <ManageIcon /> },
     { name: 'Manage Categories', path: '/manage-categories', icon: <CategoryIcon /> },
+    { name: 'Manage Discount Rules', path: '/manage-discount-rules', icon: <OfferIcon /> },
   ];
 
   const drawer = (

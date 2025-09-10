@@ -96,7 +96,7 @@ const CategoryManagementPage = () => {
           description: formData.description,
         };
 
-        await updateCategory(updateData);
+        await updateCategory(editingCategory._id, updateData);
         toast.success('Category updated successfully');
       } else {
         // Create category

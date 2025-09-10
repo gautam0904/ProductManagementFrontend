@@ -1,5 +1,5 @@
 import axios from "axios";
-import {environment} from "../environments/environment.prod"
+import {environment} from "../environments/environment"
 
 const httpClient = axios.create({
   baseURL: environment.apiUrl,

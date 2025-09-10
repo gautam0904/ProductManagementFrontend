@@ -47,7 +47,7 @@ export class CartDiscountService {
   baseURL: string;
 
   constructor() {
-    this.baseURL = '/api/discount-rules';
+    this.baseURL = '/api/v1/rules';
   }
 
   async calculateDiscounts(cartItems: CartItemLite[]): Promise<DiscountCalculation> {

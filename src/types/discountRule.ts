@@ -2,15 +2,28 @@ export interface DiscountRule {
   _id: string;
   name: string;
   description?: string;
-  type: 'percentage' | 'fixed' | 'bogo' | 'b2g1';
-  value: number; // percentage (0-100) or fixed amount
+  type: 'BOGO' | 'TWO_FOR_ONE' | 'PERCENT_CATEGORY' | 'PERCENT_PRODUCT' | 'FIXED_AMOUNT' | 'BUY_X_GET_Y';
+  product?: {
+    _id: string;
+    name: string;
+  };
+  category?: {
+    _id: string;
+    name: string;
+  };
+  percentage?: number;
+  fixedAmount?: number;
+  buyQuantity?: number;
+  getQuantity?: number;
+  minCartValue?: number;
   minQuantity?: number;
-  maxQuantity?: number;
-  applicableProducts?: string[]; // Product IDs
-  applicableCategories?: string[]; // Category IDs
+  maxDiscount?: number;
+  maxUses?: number;
+  currentUses?: number;
   startDate?: string;
   endDate?: string;
-  isActive: boolean;
+  priority?: number;
+  active: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -18,29 +31,41 @@ export interface DiscountRule {
 export interface CreateDiscountRuleRequest {
   name: string;
   description?: string;
-  type: 'percentage' | 'fixed' | 'bogo' | 'b2g1';
-  value: number;
+  type: 'BOGO' | 'TWO_FOR_ONE' | 'PERCENT_CATEGORY' | 'PERCENT_PRODUCT' | 'FIXED_AMOUNT' | 'BUY_X_GET_Y';
+  product?: string; // Product ID
+  category?: string; // Category ID
+  percentage?: number;
+  fixedAmount?: number;
+  buyQuantity?: number;
+  getQuantity?: number;
+  minCartValue?: number;
   minQuantity?: number;
-  maxQuantity?: number;
-  applicableProducts?: string[];
-  applicableCategories?: string[];
+  maxDiscount?: number;
+  maxUses?: number;
   startDate?: string;
   endDate?: string;
-  isActive?: boolean;
+  priority?: number;
+  active?: boolean;
 }
 
 export interface UpdateDiscountRuleRequest {
   name?: string;
   description?: string;
-  type?: 'percentage' | 'fixed' | 'bogo' | 'b2g1';
-  value?: number;
+  type?: 'BOGO' | 'TWO_FOR_ONE' | 'PERCENT_CATEGORY' | 'PERCENT_PRODUCT' | 'FIXED_AMOUNT' | 'BUY_X_GET_Y';
+  product?: string; // Product ID
+  category?: string; // Category ID
+  percentage?: number;
+  fixedAmount?: number;
+  buyQuantity?: number;
+  getQuantity?: number;
+  minCartValue?: number;
   minQuantity?: number;
-  maxQuantity?: number;
-  applicableProducts?: string[];
-  applicableCategories?: string[];
+  maxDiscount?: number;
+  maxUses?: number;
   startDate?: string;
   endDate?: string;
-  isActive?: boolean;
+  priority?: number;
+  active?: boolean;
 }
 
 export interface DiscountRuleResponse {

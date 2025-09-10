@@ -7,6 +7,7 @@ import CartPage from "../pages/CartPage";
 import CheckoutPage from "../pages/CheckoutPage";
 import ProductManagementPage from "../pages/ProductManagementPage";
 import CategoryManagementPage from "../pages/CategoryManagementPage";
+import DiscountRulesManagementPage from "../pages/DiscountRulesManagementPage";
 
 const AppRoutes = () => (
   <Routes>
@@ -17,6 +18,7 @@ const AppRoutes = () => (
     <Route path="/checkout" element={<CheckoutPage />} />
     <Route path="/manage-products" element={<ProductManagementPage />} />
     <Route path="/manage-categories" element={<CategoryManagementPage />} />
+    <Route path="/manage-discount-rules" element={<DiscountRulesManagementPage />} />
   </Routes>
 );
 export default AppRoutes;
